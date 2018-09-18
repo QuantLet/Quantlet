@@ -1,0 +1,15 @@
+Name of QuantLet : Quantlet_Extraction_Evaluation_Visualisation
+
+Published in : ''
+
+Description : 'Extraction, grading and clustering of the Quantlets in the GitHub Organization Quantlet with the use of the classes modules/QUANTLET.py and modules/METAFILE.py. With this program you can extract, update and save the data, model topics with Latent Semantic Analysis, compute different clusterings and visualize the clustering with t-Stochastic Neighbour embedding.'
+
+Keywords : Text analysis, LSA, t-SNE, clustering, kmeans clustering, spectral clustering, visualisation
+
+See also : ''
+
+Author : Marius Sterling
+
+Submitted : September 18 2018 by Marius Sterling
+
+Example : 
