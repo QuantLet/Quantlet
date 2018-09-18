@@ -78,7 +78,7 @@ class QUANTLET:
         server_path -- path within repo
         override -- override existing Metafile information already saved, default: None.
         """
-        self.stop_until_rate_reset(50)
+        self.stop_until_rate_reset(0)
         try:
             # get repo content from directory server_path
             contents = repo.get_dir_contents(server_path)
@@ -107,7 +107,7 @@ class QUANTLET:
             return None
         repo = self.g.get_repo(qs[list(qs.keys())[0]].repo_name)
         for k,v in tqdm(qs.items()):
-            self.stop_until_rate_reset(50)
+            self.stop_until_rate_reset(0)
             if v.repo_name != repo.name:
                 repo = self.g.get_repo(v.repo_name)
             path = v.directory.lstrip(v.repo_name).lstrip('/')
@@ -201,10 +201,10 @@ class QUANTLET:
         assert isinstance(since, datetime.datetime), \
             "Variable since must be of type datetime.datetime, e.g. datetime.datetime.strptime('2018-01-01', '%Y-%m-%d')"
         since += datetime.timedelta(seconds=1)
-        self.stop_until_rate_reset(50)
+        self.stop_until_rate_reset(0)
         ret = []
         for repo in tqdm(list(self.g.get_repos())):
-            self.stop_until_rate_reset(50)
+            self.stop_until_rate_reset(0)
             try:
                 if repo.get_commits(since=since).get_page(0):
                     ret.append(repo.name)
@@ -250,16 +250,16 @@ class QUANTLET:
             readme = '\n\n'.join(strl)
             return readme
 
-        self.stop_until_rate_reset(50)
+        self.stop_until_rate_reset(0)
         if repos is None:
             repos = list(self.g.get_repos())
 
         for repo in tqdm(repos):
-            self.stop_until_rate_reset(50)
+            self.stop_until_rate_reset(0)
             qs = {k:v for k,v in self.quantlets.items() if repo.name == v.repo_name}
             for k,v in qs.items():
                 try:
-                    self.stop_until_rate_reset(50)
+                    self.stop_until_rate_reset(0)
                     contents = repo.get_contents(v.directory.lstrip(v.repo_name))
                     if [i for i in contents if 'README.md'.lower() == i.name.lower()]:
                         continue
