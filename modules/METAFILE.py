@@ -33,6 +33,10 @@ class METAFILE:
         if self.directory.endswith('/'):
             self.directory = self.directory[:-1]
         self.is_debuggable = False
+        self.grading_output = {
+            'q_quali': 'F',
+            'comment': 'Metadata could not be parsed'
+        }
         self.last_modified = file.last_modified
         self.commit_first = {k:v for k,v in commits[1].raw_data.items() if k in ['sha','commit']}
         self.commit_last = {k: v for k, v in commits[0].raw_data.items() if k in ['sha', 'commit']}

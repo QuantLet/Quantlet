@@ -25,7 +25,6 @@ from sklearn.cluster import KMeans,SpectralClustering,DBSCAN,Birch,Agglomerative
 from sklearn.metrics import pairwise
 from sklearn.manifold import MDS, TSNE
 from tqdm import tqdm
-from gensim.sklearn_api import TfIdfTransformer
 import matplotlib.pyplot as plt
 from time import sleep
 nltk.download('stopwords')
@@ -44,6 +43,7 @@ class QUANTLET:
         self.quantlets = dict()
         self.repos = dict()
         self.github_token = github_token
+        self.last_full_check = datetime.datetime.utcnow()
         if user is None:
             self.g = Github(github_token).get_user()
         else:
@@ -56,7 +56,11 @@ class QUANTLET:
         at_least_reamining -- (int) minimum number of api calls too remain, default: None. If None it is set to 0.
         """
 
-        rate = Github(self.github_token).get_rate_limit().rate
+        rate = Github(self.github_token).get_rate_limit()
+        if hasattr(rate, 'rate'):
+            rate = rate.rate
+        else:
+            rate = rate.core
 
         if at_least_remaining is None:
             at_least_remaining = 0
@@ -64,7 +68,11 @@ class QUANTLET:
         if rate.remaining <= at_least_remaining:
             print('\nPause until around %s' % (rate.reset.strftime('%Y-%m-%d %H:%M:%S')))
             while True:
-                rate = Github(self.github_token).get_rate_limit().rate
+                rate = Github(self.github_token).get_rate_limit()
+                if hasattr(rate, 'rate'):
+                    rate = rate.rate
+                else:
+                    rate = rate.core
                 if rate.remaining > at_least_remaining:
                     break
                 t = rate.reset - datetime.datetime.utcnow() + datetime.timedelta(seconds=1)
@@ -130,6 +138,7 @@ class QUANTLET:
         repos = self.get_recently_changed_repos(since=since)
         if repos:
             self.download_metafiles_from_user(repos,override=False)
+        self.last_full_check = datetime.datetime.utcnow()
     def download_metafiles_from_user(self, repo_name=None, override=True):
         """ Downlaod repositories with name repo_name in it.
 
@@ -162,7 +171,10 @@ class QUANTLET:
         """
         with open(filepath, 'r') as f:
             output = f.read()
-        return jsonpickle.decode(output)
+        obj = jsonpickle.decode(output)
+        if not hasattr(obj, 'last_full_check'):
+            obj.last_full_check = datetime.datetime.utcnow()
+        return obj
     def grading(self, save_path=None,grades_equals=None):
         """ Extracts the grading information from the metainfo files and optionally saves them to csv
 
@@ -172,9 +184,10 @@ class QUANTLET:
         ret = []
         for _, v in self.quantlets.items():
             d = dict()
-            if v.is_debuggable:
-                d.update(v.grading_output)
-                d.update({'q_directory': v.directory, 'author': v.metainfo_debugged['author'], 'repo': v.repo_name})
+            grading_output = getattr(v, 'grading_output', None)
+            if getattr(v, 'is_debuggable', False) and grading_output is not None:
+                d.update(grading_output)
+                d.update({'q_directory': v.directory, 'author': v.metainfo_debugged.get('author', ''), 'repo': v.repo_name})
             else:
                 d.update({'q_directory': v.directory, 'q_quali': 'F', 'comment': 'Not debuggable', 'repo': v.repo_name})
             ret.append(d)
@@ -329,9 +342,9 @@ class QUANTLET:
             if v.is_debuggable:
                 text = ''
                 if include_keywords:
-                    text += v.metainfo_debugged['keywords']
+                    text += str(v.metainfo_debugged.get('keywords', ''))
                 if include_description:
-                    text += v.metainfo_debugged['description']
+                    text += str(v.metainfo_debugged.get('description', ''))
                 if include_whole_metainfo:
                     text = v.metainfo_undebugged
                 docs_clean[k] = text_preprocessing(text)
@@ -389,7 +402,8 @@ class QUANTLET:
 
         for k, v in corpus.items():
             for i in v:
-                df.loc[k][i[0]] += i[1]
+                column = dictionary.id2token[i[0]]
+                df.loc[k, column] += i[1]
         return df
     def get_SVD_explained_variance_ratio(self, tdm, with_normalize=False):
         """Returns the explained variance ratios of the singular values in the singular value decomposition of the document term matrix.
@@ -413,8 +427,9 @@ class QUANTLET:
         corpus -- corpus as contructed by QUANTLET.get_corpus_dictionary
         dictionary -- dictionary as contructed by QUANTLET.get_corpus_dictionary
         """
-        model = TfIdfTransformer(dictionary=dictionary)
-        c_tfidf = model.fit_transform([v for k, v in corpus.items()])
+        corpus_list = [v for k, v in corpus.items()]
+        model = TfidfModel(dictionary=dictionary)
+        c_tfidf = model[corpus_list]
         c_tfidf = dict(zip(corpus.keys(), c_tfidf))
         return c_tfidf
     def lsa_model(self, corpus, dictionary, num_topics=10):
@@ -742,7 +757,7 @@ class QUANTLET:
         save_ending -- filename ending for images
         """
         n = len(set(cluster_labels.values()))
-        tsne = TSNE(n_components=2, random_state=1, n_iter=n_iter, metric=dist_metric)
+        tsne = TSNE(n_components=2, random_state=1, max_iter=n_iter, metric=dist_metric)
         pos = tsne.fit_transform(X)
 
         cl_set = list(set(cluster_labels.values()))
